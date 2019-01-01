@@ -34,7 +34,7 @@ fi
 # Wait for mariadb host to show up before proceeding
 # It would be nice if Docker compose would just wait based on the depends-on statement
 # but it apparently doesn't wait for anything to init.
-dbWaitLoopCount=0
+declare -i dbWaitLoopCount=0
 while ! nc -z ${MARIADB_HOST} 3306 2>/dev/null; do
     echo "DB Host/Listener not found yet.  Waiting a bit before re-trying..."
     sleep 10
@@ -65,6 +65,19 @@ fi
 
 MEDIAWIKI_DOCKER_CONF_DIR=/opt/mediawiki_docker_conf
 MEDIAWIKI_DOCKER_CONF_FILEPATH="${MEDIAWIKI_DOCKER_CONF_DIR}/LocalSettings.php"
+# Note: Because of a docker timing issue mounting volumes, using the volume
+# before it is available may result in a cryptic "too many levels of symbolic links"
+# error.  This waits for it to become available before moving and linking stuff.
+declare -i dockerVolumeWaitLoopCount=0
+while [ ! -d "${MEDIAWIKI_DOCKER_CONF_DIR}" ]; do
+    echo "Docker volume not mounted yet.  Waiting a bit before re-trying..."
+    sleep 10
+    dockerVolumeWaitLoopCount=$dockerVolumeWaitLoopCount+1
+    if [ $dockerVolumeWaitLoopCount -ge 10 ]; then
+        echo "Volume never mounted. Giving up.  LocalSettings.php needs to be moved manually."
+        break
+    fi
+done
 if [ ! -s "${MEDIAWIKI_DOCKER_CONF_FILEPATH}" ]; then
     # See: https://www.mediawiki.org/wiki/Manual:Install.php
     # Run PHP from the command line (since the actual nginx and php-fpm won't be running yet).
@@ -91,18 +104,6 @@ if [ ! -s "${MEDIAWIKI_DOCKER_CONF_FILEPATH}" ]; then
     # to a location outside the container, and managed there.
     # mkdir /opt/mediawiki_docker_conf
     echo "Re-locating LocalSettings.php to the Docker 'mediawiki_docker_conf' volume path."
-    # Note: Because of a docker issue mounting volumes, this may result in a
-    # "too many levels of symbolic links" error if it is done too soon.
-    dockerVolumeWaitLoopCount=0
-    while [ ! -d "${MEDIAWIKI_DOCKER_CONF_DIR}" ]; do
-        echo "Docker volume not mounted yet.  Waiting a bit before re-trying..."
-        sleep 10
-        dockerVolumeWaitLoopCount=$dockerVolumeWaitLoopCount+1
-        if [ $dockerVolumeWaitLoopCount -ge 10 ]; then
-            echo "Volume never mounted. Giving up.  LocalSettings.php needs to be moved manually."
-            break
-        fi
-    done
     mv /opt/mediawiki/wiki/LocalSettings.php "${MEDIAWIKI_DOCKER_CONF_FILEPATH}"
     cp /mediawikicontainerlogo.png "${MEDIAWIKI_DOCKER_CONF_DIR}/"
     mv /opt/mediawiki/wiki/resources/assets/wiki.png /opt/mediawiki/wiki/resources/assets/wiki_original.png
@@ -116,6 +117,11 @@ elif [ ! -f /opt/mediawiki/wiki/LocalSettings.php ]; then
     # re-link existing config in case the container was re-created from the image 
     echo "Re-linking existing LocalSettings.php (from mapped volume)."
     sudo -u www-data ln -s "${MEDIAWIKI_DOCKER_CONF_FILEPATH}" /opt/mediawiki/wiki/LocalSettings.php
+    # Also assume that the LocalSettings.php was found in the mounted volume
+    # the logo .png file was probably already copied there too, so redo the process
+    # of moving the default out the way and linking to the external one.
+    mv /opt/mediawiki/wiki/resources/assets/wiki.png /opt/mediawiki/wiki/resources/assets/wiki_original.png
+    sudo -u www-data ln -s "${MEDIAWIKI_DOCKER_CONF_DIR}/mediawikicontainerlogo.png" /opt/mediawiki/wiki/resources/assets/wiki.png
 fi
 
 # put the supervisord config where it goes (substituting if necessary)
