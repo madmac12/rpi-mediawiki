@@ -1,0 +1,33 @@
+version: '2'
+services:
+  mediawiki-mariadb:
+    image: 'jsurf/rpi-mariadb:latest'
+    environment:
+      - MYSQL_ROOT_PASSWORD=mediaWIKI999
+    ports:
+      - '33306:3306'
+    volumes:
+      - 'mediawiki_mariadb_sys:/sys/fs/cgroup'
+      - 'mediawiki_mariadb_data:/var/lib/mysql'
+  mediawiki-app:
+    image: 'rthomas67/rpi-mediawiki:v1.31.1_r0'
+    environment:
+      - MARIADB_HOST=mediawiki-mariadb
+      - MARIADB_ROOT_PASSWORD=mediaWIKI999
+    ports:
+      - '30080:80'
+      - '30443:443'
+    volumes:
+      - 'mediawiki_conf:/opt/mediawiki_docker_conf'
+      - 'mediawiki_images:/opt/mediawiki/images'
+    depends_on:
+      - mediawiki-mariadb
+volumes:
+  mediawiki_mariadb_sys:
+    driver: local
+  mediawiki_mariadb_data:
+    driver: local
+  mediawiki_conf:
+    driver: local
+  mediawiki_images:
+    driver: local
