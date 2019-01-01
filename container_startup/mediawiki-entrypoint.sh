@@ -34,12 +34,12 @@ fi
 # Wait for mariadb host to show up before proceeding
 # It would be nice if Docker compose would just wait based on the depends-on statement
 # but it apparently doesn't wait for anything to init.
-declare -i dbWaitLoopCount=0
+dbWaitLoopCount=$((0))
 while ! nc -z ${MARIADB_HOST} 3306 2>/dev/null; do
     echo "DB Host/Listener not found yet.  Waiting a bit before re-trying..."
     sleep 10
-    dbWaitLoopCount=$dbWaitLoopCount+1
-    if [ dbWaitLoopCount -ge 10 ]; then
+    dbWaitLoopCount=$((dbWaitLoopCount+1))
+    if [ $dbWaitLoopCount -ge 10 ]; then
         echo "DB Host/Listener never found.  Check to be sure mariadb is running on host: '${MARIADB_HOST}'."
         break
     fi
@@ -68,11 +68,11 @@ MEDIAWIKI_DOCKER_CONF_FILEPATH="${MEDIAWIKI_DOCKER_CONF_DIR}/LocalSettings.php"
 # Note: Because of a docker timing issue mounting volumes, using the volume
 # before it is available may result in a cryptic "too many levels of symbolic links"
 # error.  This waits for it to become available before moving and linking stuff.
-declare -i dockerVolumeWaitLoopCount=0
+dockerVolumeWaitLoopCount=$((0))
 while [ ! -d "${MEDIAWIKI_DOCKER_CONF_DIR}" ]; do
     echo "Docker volume not mounted yet.  Waiting a bit before re-trying..."
     sleep 10
-    dockerVolumeWaitLoopCount=$dockerVolumeWaitLoopCount+1
+    dockerVolumeWaitLoopCount=$((dockerVolumeWaitLoopCount+1))
     if [ $dockerVolumeWaitLoopCount -ge 10 ]; then
         echo "Volume never mounted. Giving up.  LocalSettings.php needs to be moved manually."
         break
