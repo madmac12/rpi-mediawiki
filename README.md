@@ -19,8 +19,7 @@ but docker compose (i.e. portainer stacks) is easier.
 
 # Notes
 * The wiki is configured under a web subdirectory named "/wiki"
-** The forwarding rule in Nginx to kick the browser from the root "/" isn't working right because, contrary to the docs about $http_ANYHEADERNAME,
-the Location header somehow doesn't make it back through the docker port mapping and the exposed docker port is removed from the URL.
+* Nginx is configured to kick requests for the root of the web host to the Main_Page
 
 
 # Docker Hub
